@@ -8,25 +8,53 @@ router = APIRouter()
 
 @router.post("/upload", response_model=schemas.DataFrameSummary)
 async def upload_file(file: UploadFile = File(...)):
-    """
-    Recibe un archivo (.csv o .xlsx), lo procesa y retorna información resumida
-del DataFrame para ser analizado por la IA.
-    """
-    # Lógica pendiente en data_utils
-    pass
+    """Simula procesamiento de archivo."""
+    # MOCK: devuelve un resumen falso, sin procesar nada aún
+    summary = {
+        "columns": ["Región", "Ventas", "Fecha"],
+        "dtypes": {"Región": "object", "Ventas": "float64", "Fecha": "datetime64"},
+        "describe": {
+            "Ventas": {"mean": 1500, "max": 3000, "min": 500}
+        },
+        "info": "3 columnas: Región (texto), Ventas (numérico), Fecha (fecha)"
+    }
+    return summary
 
 @router.post("/suggest", response_model=List[schemas.ChartSuggestion])
 async def get_ai_suggestions(summary: schemas.DataFrameSummary):
-    """
-    Recibe un resumen de datos y obtiene sugerencias de visualización a través de IA.
-    """
-    # Lógica pendiente en ai.py
-    pass
+    """Simula la respuesta de la IA con sugerencias ficticias."""
+    # MOCK: sugerencias simuladas
+    sample_suggestions = [
+        {
+            "title": "Ventas por Región",
+            "chart_type": "bar",
+            "parameters": {"x_axis": "Región", "y_axis": "Ventas"},
+            "insight": "La región Centro presenta el mayor volumen de ventas."
+        },
+        {
+            "title": "Tendencia de ventas",
+            "chart_type": "line",
+            "parameters": {"x_axis": "Fecha", "y_axis": "Ventas"},
+            "insight": "Las ventas van en aumento durante el año."
+        },
+        {
+            "title": "Ventas totales",
+            "chart_type": "pie",
+            "parameters": {"x_axis": "Región", "y_axis": "Ventas"},
+            "insight": "La mayor proporción corresponde a la región Norte."
+        }
+    ]
+    return sample_suggestions
 
 @router.post("/chart-data", response_model=schemas.ChartData)
 async def get_chart_data(params: schemas.ChartParameters):
-    """
-    Con los parámetros de la gráfica seleccionada, devuelve los datos agregados y listos para graficar.
-    """
-    # Lógica pendiente en data_utils
-    pass
+    """Simula los datos agregados para una gráfica concreta."""
+    # Para ahora, solo devuelve datos fijos de ejemplo
+    return {
+        "data": [
+            {"Región": "Centro", "Ventas": 3000},
+            {"Región": "Norte", "Ventas": 2500},
+            {"Región": "Sur", "Ventas": 1500}
+        ],
+        "columns": ["Región", "Ventas"]
+    }
