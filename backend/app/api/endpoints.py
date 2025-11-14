@@ -1,28 +1,29 @@
 # endpoints.py
 # Definición de rutas de la API para manejo de archivos, sugerencias IA y datos de gráficos
-from fastapi import APIRouter, UploadFile, File, HTTPException, status, Form
+from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.models import schemas
 from typing import List
+from app.core.data_utils import read_file_to_df, get_dataframe_summary
 
 router = APIRouter()
 
 @router.post("/upload", response_model=schemas.DataFrameSummary)
 async def upload_file(file: UploadFile = File(...)):
-    """Simula procesamiento de archivo."""
-    # MOCK: devuelve un resumen falso, sin procesar nada aún
-    summary = {
-        "columns": ["Región", "Ventas", "Fecha"],
-        "dtypes": {"Región": "object", "Ventas": "float64", "Fecha": "datetime64"},
-        "describe": {
-            "Ventas": {"mean": 1500, "max": 3000, "min": 500}
-        },
-        "info": "3 columnas: Región (texto), Ventas (numérico), Fecha (fecha)"
-    }
-    return summary
+    """
+    Procesa realmente el archivo proporcionado y retorna un resumen de pandas.
+    """
+    try:
+        df = read_file_to_df(file)
+        summary = get_dataframe_summary(df)
+        return summary
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error procesando archivo: {str(e)}")
 
 @router.post("/suggest", response_model=List[schemas.ChartSuggestion])
 async def get_ai_suggestions(summary: schemas.DataFrameSummary):
-    """Simula la respuesta de la IA con sugerencias ficticias."""
+    """
+    Simula la respuesta de la IA con sugerencias ficticias.
+    """
     # MOCK: sugerencias simuladas
     sample_suggestions = [
         {
@@ -48,7 +49,9 @@ async def get_ai_suggestions(summary: schemas.DataFrameSummary):
 
 @router.post("/chart-data", response_model=schemas.ChartData)
 async def get_chart_data(params: schemas.ChartParameters):
-    """Simula los datos agregados para una gráfica concreta."""
+    """
+    Simula los datos agregados para una gráfica concreta.
+    """
     # Para ahora, solo devuelve datos fijos de ejemplo
     return {
         "data": [
