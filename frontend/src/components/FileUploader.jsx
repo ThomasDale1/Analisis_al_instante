@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
 import { uploadFileAndGetSuggestions } from "../services/api";
-import { Box, Button, Typography, Paper, Alert } from "@mui/material";
+import { Box, Button, Typography, Paper } from "@mui/material";
 
 /**
  * Componente para subir archivos con drag-and-drop y Material UI.
  */
-const FileUploader = ({ setLoading, setSuggestions, setError }) => {
+const FileUploader = ({ setLoading, setSuggestions }) => {
   const fileInputRef = useRef();
   const [dragActive, setDragActive] = useState(false);
   const [fileName, setFileName] = useState("");
@@ -18,16 +18,10 @@ const FileUploader = ({ setLoading, setSuggestions, setError }) => {
     setFileName(file.name);
     setLoading(true);
     setSuggestions([]);
-    setError(null); // Limpiar errores previos
 
-    try {
-      const suggs = await uploadFileAndGetSuggestions(file);
-      setSuggestions(suggs);
-      setLoading(false);
-    } catch (error) {
-      setLoading(false);
-      setError(error.message || "Error desconocido al procesar el archivo");
-    }
+    const suggs = await uploadFileAndGetSuggestions(file);
+    setSuggestions(suggs);
+    setLoading(false);
   };
 
   // Drag events:
@@ -47,16 +41,9 @@ const FileUploader = ({ setLoading, setSuggestions, setError }) => {
       setFileName(file.name);
       setLoading(true);
       setSuggestions([]);
-      setError(null); // Limpiar errores previos
-
-      try {
-        const suggs = await uploadFileAndGetSuggestions(file);
-        setSuggestions(suggs);
-        setLoading(false);
-      } catch (error) {
-        setLoading(false);
-        setError(error.message || "Error desconocido al procesar el archivo");
-      }
+      const suggs = await uploadFileAndGetSuggestions(file);
+      setSuggestions(suggs);
+      setLoading(false);
     }
   };
 
