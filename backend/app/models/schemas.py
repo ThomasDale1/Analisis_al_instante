@@ -1,7 +1,7 @@
 # schemas.py
 # Esquemas Pydantic para validar requests y responses en cada endpoint
 from pydantic import BaseModel
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Optional
 
 class DataFrameSummary(BaseModel):
     """
@@ -19,9 +19,9 @@ class ChartParameters(BaseModel):
     (ejemplo: {"x_axis": "Región", "y_axis": "Ventas"}).
     """
     x_axis: str
-    y_axis: str = None
-    hue: str = None  # Opcional para agrupaciones
-    agg_func: str = None  # opción para suma, promedio, etc.
+    y_axis: Optional[str] = None
+    hue: Optional[str] = None  # Opcional para agrupaciones
+    agg_func: Optional[str] = None  # opción para suma, promedio, etc.
 
 class ChartSuggestion(BaseModel):
     """
