@@ -1,0 +1,34 @@
+# Archivos de entorno con claves sensibles
+.env
+.env.local
+.env.*.local
+
+# Caché de Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Entornos virtuales
+venv/
+env/
+ENV/
+.venv
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Datos temporales
+data/
+*.csv
+*.xlsx
+*.xls
+
+# Logs
+*.log
+
