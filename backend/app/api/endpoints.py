@@ -4,34 +4,44 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 from app.models import schemas
 from typing import List
 import logging
+import uuid
+from datetime import datetime
 from app.core.data_utils import read_file_to_df, get_dataframe_summary, aggregate_for_chart
 from app.core.ai import build_prompt, get_suggestions_from_llm
 
 # Configurar logging
 logger = logging.getLogger(__name__)
 
-# Almacenamiento temporal de DataFrames en memoria (por nombre de archivo)
+# Almacenamiento temporal de DataFrames en memoria (por ID único)
 # En producción, usar Redis o base de datos
 _dataframe_cache = {}
 
 router = APIRouter()
 
-@router.post("/upload", response_model=schemas.DataFrameSummary)
+@router.post("/upload", response_model=schemas.DataFrameSummaryWithId)
 async def upload_file(file: UploadFile = File(...)):
     """
     Procesa realmente el archivo proporcionado y retorna un resumen de pandas.
     Guarda el DataFrame en memoria para uso posterior en /chart-data.
+    Genera un ID único para cada archivo subido.
     """
     try:
         df = read_file_to_df(file)
         summary = get_dataframe_summary(df)
         
-        # Guardar DataFrame en memoria usando el nombre del archivo como clave
-        # En producción, usar un sistema de caché más robusto
-        _dataframe_cache[file.filename] = df
-        logger.info(f"DataFrame guardado en caché para archivo: {file.filename}")
+        # Generar un ID único para este archivo
+        file_id = f"{file.filename}_{uuid.uuid4().hex[:8]}_{int(datetime.now().timestamp())}"
         
-        return summary
+        # Guardar DataFrame en memoria usando el ID único como clave
+        _dataframe_cache[file_id] = df
+        logger.info(f"DataFrame guardado en caché con ID: {file_id}")
+        
+        # Retornar el resumen junto con el ID único
+        return {
+            **summary,
+            "file_id": file_id,
+            "filename": file.filename
+        }
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error procesando archivo: {str(e)}")
 
@@ -90,20 +100,21 @@ async def get_ai_suggestions(summary: schemas.DataFrameSummary):
 async def get_chart_data(request: schemas.ChartDataRequest):
     """
     Procesa los datos reales del DataFrame guardado y devuelve datos agregados para la gráfica.
+    Usa el file_id único para buscar el DataFrame correcto.
     """
     try:
-        filename = request.filename
+        file_id = request.file_id
         params = request.parameters.model_dump()
         
-        # Obtener DataFrame del caché
-        if filename not in _dataframe_cache:
+        # Obtener DataFrame del caché usando el ID único
+        if file_id not in _dataframe_cache:
             raise HTTPException(
                 status_code=404, 
-                detail=f"Archivo '{filename}' no encontrado en caché. Por favor, súbelo de nuevo."
+                detail=f"Archivo con ID '{file_id}' no encontrado en caché. Por favor, súbelo de nuevo."
             )
         
-        df = _dataframe_cache[filename]
-        logger.info(f"Procesando datos para gráfica: {params}")
+        df = _dataframe_cache[file_id]
+        logger.info(f"Procesando datos para gráfica con file_id: {file_id}, params: {params}")
         
         # Agregar datos según los parámetros
         data, columns = aggregate_for_chart(df, params)

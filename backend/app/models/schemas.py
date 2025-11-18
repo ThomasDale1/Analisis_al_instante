@@ -13,6 +13,13 @@ class DataFrameSummary(BaseModel):
     describe: Dict[str, Any]
     info: str  # Por simplicidad, en texto plano, pero puede ser mejorado
 
+class DataFrameSummaryWithId(DataFrameSummary):
+    """
+    Resumen del DataFrame con ID único y nombre de archivo.
+    """
+    file_id: str
+    filename: str
+
 class ChartParameters(BaseModel):
     """
     Especifica las columnas y posibles agregaciones necesarias para un gráfico
@@ -34,9 +41,9 @@ class ChartSuggestion(BaseModel):
 
 class ChartDataRequest(BaseModel):
     """
-    Request para obtener datos de gráfica: necesita el nombre del archivo y los parámetros.
+    Request para obtener datos de gráfica: necesita el ID único del archivo y los parámetros.
     """
-    filename: str
+    file_id: str
     parameters: ChartParameters
 
 class ChartData(BaseModel):

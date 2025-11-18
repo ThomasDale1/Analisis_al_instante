@@ -6,10 +6,10 @@ import { BarChart as BarChartIcon, ShowChart, PieChart, ScatterPlot } from "@mui
  * Tarjeta con recomendación IA que muestra la gráfica renderizada.
  * Props:
  * - suggestion: objeto con title, insight, parameters, chart_type
- * - filename: nombre del archivo subido
+ * - fileId: ID único del archivo subido
  * - onAdd: función callback para añadir el gráfico al dashboard
  */
-const SuggestionCard = ({ suggestion, filename, onAdd }) => {
+const SuggestionCard = ({ suggestion, fileId, onAdd }) => {
   const { title, insight, chart_type, parameters } = suggestion;
 
   // Icono según el tipo de gráfica
@@ -34,19 +34,23 @@ const SuggestionCard = ({ suggestion, filename, onAdd }) => {
 
   return (
     <Paper
-      elevation={3}
+      elevation={0}
       sx={{
         p: 2.5,
-        minWidth: 380,
-        maxWidth: 480,
+        width: { xs: "100%", sm: "380px" },
+        maxWidth: "480px",
         display: "flex",
         flexDirection: "column",
         gap: 1.5,
         transition: "all 0.3s ease",
+        background: "rgba(26, 35, 50, 0.8)",
+        backdropFilter: "blur(10px)",
+        border: "1px solid rgba(255, 255, 255, 0.1)",
+        borderRadius: 3,
         "&:hover": {
-          elevation: 6,
           transform: "translateY(-4px)",
-          boxShadow: "0 8px 24px rgba(0,0,0,0.15)"
+          boxShadow: "0 12px 32px rgba(33, 150, 243, 0.2)",
+          border: "1px solid rgba(33, 150, 243, 0.3)"
         }
       }}
     >
@@ -92,7 +96,7 @@ const SuggestionCard = ({ suggestion, filename, onAdd }) => {
         <ChartPreview
           chartType={chart_type}
           parameters={parameters}
-          filename={filename}
+          fileId={fileId}
         />
       </Box>
 

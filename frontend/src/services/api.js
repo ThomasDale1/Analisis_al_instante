@@ -8,7 +8,7 @@ const API_BASE = 'http://localhost:8000'; // Ajusta si el backend está en otro 
  */
 export async function uploadFileAndGetSuggestions(file) {
   try {
-    // 1. Sube el archivo y obtiene el resumen
+    // 1. Sube el archivo y obtiene el resumen con file_id
     const formData = new FormData();
     formData.append('file', file);
 
@@ -16,13 +16,14 @@ export async function uploadFileAndGetSuggestions(file) {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
 
-    // 2. Envía el resumen a /suggest
-    const summary = uploadResp.data;
+    // 2. Envía el resumen a /suggest (sin file_id ni filename)
+    const { file_id, filename, ...summary } = uploadResp.data;
     const suggestResp = await axios.post(`${API_BASE}/suggest`, summary);
 
     return {
       suggestions: suggestResp.data,
-      filename: file.name
+      fileId: file_id,
+      filename: filename
     };
   } catch (error) {
     let errorMessage = "Error al procesar el archivo";
@@ -45,14 +46,14 @@ export async function uploadFileAndGetSuggestions(file) {
 
 /**
  * Obtiene los datos procesados para una gráfica específica.
- * @param {string} filename - Nombre del archivo subido
+ * @param {string} fileId - ID único del archivo subido
  * @param {object} parameters - Parámetros de la gráfica (x_axis, y_axis, hue, agg_func)
  * @returns {Promise<{data: Array, columns: Array}>}
  */
-export async function getChartData(filename, parameters) {
+export async function getChartData(fileId, parameters) {
   try {
     const response = await axios.post(`${API_BASE}/chart-data`, {
-      filename,
+      file_id: fileId,
       parameters
     });
     return response.data;
