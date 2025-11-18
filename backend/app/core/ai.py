@@ -10,6 +10,40 @@ from app.config import OPENAI_API_KEY
 logger = logging.getLogger(__name__)
 
 
+def _classify_columns(columns: list, dtypes: dict, describe: dict) -> str:
+    """
+    Clasifica las columnas por tipo y características para ayudar a la IA.
+    """
+    classification = []
+    
+    for col in columns:
+        dtype = dtypes.get(col, "unknown")
+        col_stats = describe.get(col, {})
+        unique_count = col_stats.get("unique", "N/A")
+        
+        # Determinar el tipo de columna
+        if "int" in dtype or "float" in dtype:
+            col_type = "NUMÉRICA"
+            suggestion = "Ideal para y_axis en gráficos de barras, o para scatter plots"
+        elif "object" in dtype or "string" in dtype:
+            if isinstance(unique_count, (int, float)) and unique_count > 10:
+                col_type = "CATEGÓRICA (muchos valores únicos)"
+                suggestion = "EVITAR en gráficos de pastel. Puede ser nombre/ID único"
+            else:
+                col_type = "CATEGÓRICA (pocos valores)"
+                suggestion = "Ideal para x_axis en barras o pastel"
+        elif "datetime" in dtype:
+            col_type = "TEMPORAL"
+            suggestion = "Ideal para x_axis en gráficos de línea"
+        else:
+            col_type = "OTRO"
+            suggestion = "Analizar caso por caso"
+        
+        classification.append(f"  - {col}: {col_type} (valores únicos: {unique_count}) → {suggestion}")
+    
+    return "\n".join(classification)
+
+
 def build_prompt(summary: Dict[str, Any]) -> str:
     """
     Construye el prompt para el LLM basado en el resumen del DataFrame.
@@ -21,48 +55,84 @@ def build_prompt(summary: Dict[str, Any]) -> str:
     
     logger.info(f"Construyendo prompt para {len(columns)} columnas: {', '.join(columns)}")
     
-    prompt = f"""Eres un analista de datos experto. Analiza el siguiente conjunto de datos y sugiere visualizaciones impactantes.
+    prompt = f"""Eres un analista de datos experto especializado en visualización de datos. Analiza el siguiente dataset y sugiere las visualizaciones más relevantes e impactantes.
 
 INFORMACIÓN DEL DATASET:
-- Columnas: {', '.join(columns)}
+- Columnas disponibles: {', '.join(columns)}
 - Tipos de datos: {json.dumps(dtypes, indent=2)}
 - Estadísticas descriptivas: {json.dumps(describe, indent=2, default=str)}
 - Información del DataFrame:
 {info}
 
+REGLAS CRÍTICAS PARA SELECCIÓN DE COLUMNAS:
+1. **Para gráficos de BARRAS (bar)**:
+   - x_axis: Usa columnas CATEGÓRICAS (texto, departamentos, regiones, categorías)
+   - y_axis: Usa columnas NUMÉRICAS (salarios, ventas, cantidades, edades)
+   - Ejemplo: x_axis="Departamento", y_axis="Salario" (NO uses columnas de nombres de personas)
+
+2. **Para gráficos de PASTEL (pie)**:
+   - x_axis: Usa SOLO columnas categóricas con POCOS valores únicos (departamentos, categorías, regiones)
+   - y_axis: Déjalo vacío o null (el gráfico contará automáticamente)
+   - NUNCA uses columnas con nombres de personas o IDs únicos
+   - Ejemplo: x_axis="Departamento" (mostrará la proporción de cada departamento)
+
+3. **Para gráficos de DISPERSIÓN (scatter)**:
+   - x_axis: Variable numérica independiente (edad, años de experiencia)
+   - y_axis: Variable numérica dependiente (salario, ventas)
+   - Ejemplo: x_axis="Edad", y_axis="Salario"
+
+4. **Para gráficos de LÍNEA (line)**:
+   - x_axis: Fechas, tiempo, o secuencias ordenadas
+   - y_axis: Valores numéricos que cambian en el tiempo
+   - Solo usa si hay columnas de fecha o tiempo
+
+5. **Para HISTOGRAMAS (histogram)**:
+   - x_axis: Una sola columna numérica para ver su distribución
+   - y_axis: Déjalo vacío (el histograma cuenta frecuencias automáticamente)
+
+TIPOS DE COLUMNAS IDENTIFICADAS:
+{_classify_columns(columns, dtypes, describe)}
+
 INSTRUCCIONES:
-1. Identifica los patrones, relaciones o insights más interesantes en estos datos.
-2. Sugiere entre 3 y 5 visualizaciones específicas que destaquen estos patrones.
-3. Para cada visualización, proporciona:
-   - Un título descriptivo y atractivo
-   - El tipo de gráfico más adecuado (bar, line, pie, scatter, area, etc.)
-   - Las columnas a usar (x_axis, y_axis, y opcionalmente hue para agrupaciones)
-   - Un insight breve (1-2 oraciones) explicando qué revela esta visualización
+1. Analiza los tipos de columnas y sus valores únicos
+2. Sugiere EXACTAMENTE 5 visualizaciones que sean RELEVANTES y CORRECTAS
+3. EVITA usar columnas con muchos valores únicos (como nombres de personas) en gráficos de pastel o barras
+4. Prioriza comparaciones significativas (salarios por departamento, distribuciones de edad, etc.)
+5. Usa VARIEDAD de tipos de gráficos (bar, pie, scatter, histogram, line si hay fechas)
+6. Para cada visualización, proporciona:
+   - Un título claro y descriptivo
+   - El tipo de gráfico más apropiado según los datos
+   - Las columnas correctas para x_axis e y_axis
+   - Un insight breve (1-2 oraciones) explicando qué revela
 
-TIPOS DE GRÁFICOS DISPONIBLES:
-- bar: Para comparar categorías
-- line: Para tendencias temporales
-- pie: Para proporciones/porcentajes
-- scatter: Para relaciones entre dos variables numéricas
-- area: Para tendencias acumulativas
-- histogram: Para distribuciones
-
-IMPORTANTE:
-- Responde ÚNICAMENTE con un JSON válido, sin texto adicional antes o después.
-- El JSON debe tener este formato exacto:
+FORMATO DE RESPUESTA (JSON VÁLIDO):
 [
   {{
-    "title": "Título descriptivo del gráfico",
+    "title": "Distribución de Salarios por Departamento",
     "chart_type": "bar",
     "parameters": {{
-      "x_axis": "nombre_columna_x",
-      "y_axis": "nombre_columna_y"
+      "x_axis": "Departamento",
+      "y_axis": "Salario"
     }},
-    "insight": "Breve análisis de qué revela este gráfico"
+    "insight": "Compara los salarios promedio entre departamentos para identificar diferencias de compensación."
+  }},
+  {{
+    "title": "Proporción de Empleados por Departamento",
+    "chart_type": "pie",
+    "parameters": {{
+      "x_axis": "Departamento"
+    }},
+    "insight": "Muestra qué porcentaje del personal trabaja en cada departamento."
   }}
 ]
 
-Asegúrate de que los nombres de las columnas en "parameters" coincidan exactamente con las columnas proporcionadas.
+IMPORTANTE:
+- Responde SOLO con el JSON, sin texto adicional
+- Genera EXACTAMENTE 5 visualizaciones (no más, no menos)
+- Los nombres de columnas deben coincidir EXACTAMENTE con: {', '.join(columns)}
+- NO uses columnas de nombres de personas para gráficos de pastel o barras
+- Verifica que las combinaciones x_axis/y_axis tengan sentido estadístico
+- Usa diferentes tipos de gráficos para dar variedad
 """
     return prompt
 

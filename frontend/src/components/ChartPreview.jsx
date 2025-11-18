@@ -79,8 +79,8 @@ const ChartPreview = ({ chartType, parameters, filename }) => {
   let yKey = parameters.y_axis || columns.find(col => col !== xKey) || 'count';
   
   // Si yKey no existe en los datos, buscar alternativas
-  if (!data[0]?.hasOwnProperty(yKey)) {
-    yKey = columns.find(col => col !== xKey && data[0]?.hasOwnProperty(col)) || columns[1] || 'count';
+  if (!Object.prototype.hasOwnProperty.call(data[0] || {}, yKey)) {
+    yKey = columns.find(col => col !== xKey && Object.prototype.hasOwnProperty.call(data[0] || {}, col)) || columns[1] || 'count';
   }
 
   // Limitar datos para mejor visualización
@@ -175,7 +175,30 @@ const ChartPreview = ({ chartType, parameters, filename }) => {
         </ResponsiveContainer>
       );
 
-    case "scatter":
+    case "scatter": {
+      // Tooltip personalizado para scatter que muestra todos los datos del punto
+      const CustomScatterTooltip = ({ active, payload }) => {
+        if (active && payload && payload.length) {
+          const data = payload[0].payload;
+          return (
+            <div style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.95)',
+              border: '1px solid #ccc',
+              borderRadius: '4px',
+              padding: '10px',
+              fontSize: '12px'
+            }}>
+              {Object.entries(data).map(([key, value]) => (
+                <div key={key} style={{ marginBottom: '4px' }}>
+                  <strong>{key}:</strong> {value}
+                </div>
+              ))}
+            </div>
+          );
+        }
+        return null;
+      };
+
       return (
         <ResponsiveContainer width="100%" height={280}>
           <ScatterChart margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
@@ -185,19 +208,22 @@ const ChartPreview = ({ chartType, parameters, filename }) => {
               type="number"
               tick={{ fontSize: 11 }}
               name={xKey}
+              label={{ value: xKey, position: 'insideBottom', offset: -5, fontSize: 10 }}
             />
             <YAxis 
               dataKey={yKey}
               type="number"
               tick={{ fontSize: 11 }}
               name={yKey}
+              label={{ value: yKey, angle: -90, position: 'insideLeft', fontSize: 10 }}
             />
-            <Tooltip cursor={{ strokeDasharray: '3 3' }} contentStyle={tooltipStyle} />
+            <Tooltip content={<CustomScatterTooltip />} cursor={{ strokeDasharray: '3 3' }} />
             <Legend wrapperStyle={{ fontSize: '12px' }} />
             <Scatter name={`${xKey} vs ${yKey}`} data={displayData} fill={colors[0]} />
           </ScatterChart>
         </ResponsiveContainer>
       );
+    }
 
     case "area":
       return (
