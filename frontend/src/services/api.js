@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = 'http://localhost:8000'; // Ajusta si el backend está en otro puerto
+const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'; // Ajusta si el backend está en otro puerto
 
 /**
  * Sube un archivo, obtiene sugerencias IA del backend.
