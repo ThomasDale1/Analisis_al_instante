@@ -6,3 +6,4 @@ aiofiles  # Requerido para manejo de archivos asíncrono
 pydantic  # Validación de datos, incluido en fastapi
 python-dotenv  # Variables de entorno desde .env
 openai  # SDK para llamadas a OpenAI GPT (opcional, o sustituir por otro LLM)
+magnum
