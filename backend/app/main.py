@@ -30,11 +30,11 @@ async def root():
 async def health():
     return {"status": "healthy"}
 
-@app.get("/api/test")
-async def test():
+@app.get("/deploy")
+async def root():
     return {
         "test": "exitoso",
-        "message": "Endpoint de prueba funcionando"
+        "message": "Render Deployment"
     }
 
 # Handler para Vercel (IMPORTANTE)
