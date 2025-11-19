@@ -5,8 +5,9 @@ import { Paper, Typography, Box } from "@mui/material";
  * Renderiza una gráfica individual dentro del dashboard.
  */
 const ChartRenderer = ({ chart }) => {
-  const { title, chart_type, parameters, fileId } = chart;
+  const { title, chart_type, parameters, fileId, insight, description } = chart;
 
+  const displayDescription = description || insight;
   return (
     <Paper
       elevation={0}
@@ -37,6 +38,19 @@ const ChartRenderer = ({ chart }) => {
       >
         {title}
       </Typography>
+
+      {displayDescription && (
+        <Typography
+          variant="body2"
+          sx={{
+            mb: 2,
+            color: "text.secondary",
+            textAlign: "center"
+          }}
+        >
+          {displayDescription}
+        </Typography>
+      )}
 
       <Box sx={{ flex: 1, minHeight: 300 }}>
         <ChartPreview

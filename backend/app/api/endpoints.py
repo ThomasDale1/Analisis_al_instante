@@ -108,9 +108,10 @@ async def get_chart_data(request: schemas.ChartDataRequest):
         
         # Obtener DataFrame del caché usando el ID único
         if file_id not in _dataframe_cache:
+            logger.warning(f"File ID '{file_id}' no encontrado en caché. IDs disponibles: {list(_dataframe_cache.keys())}")
             raise HTTPException(
                 status_code=404, 
-                detail=f"Archivo con ID '{file_id}' no encontrado en caché. Por favor, súbelo de nuevo."
+                detail="⚠️ El archivo ya no está disponible en memoria. Esto puede ocurrir si el servidor se reinició. Por favor, sube el archivo de nuevo para generar nuevas sugerencias."
             )
         
         df = _dataframe_cache[file_id]

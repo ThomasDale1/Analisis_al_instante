@@ -29,6 +29,7 @@ class ChartParameters(BaseModel):
     y_axis: Optional[str] = None
     hue: Optional[str] = None  # Opcional para agrupaciones
     agg_func: Optional[str] = None  # opción para suma, promedio, etc.
+    chart_type: Optional[str] = None  # tipo de gráfico para casos especiales
 
 class ChartSuggestion(BaseModel):
     """

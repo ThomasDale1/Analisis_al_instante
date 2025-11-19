@@ -3,7 +3,7 @@ import Loader from "../components/Loader";
 import SuggestionCard from "../components/SuggestionCard";
 import Dashboard from "../components/Dashboard";
 import { useState } from "react";
-import { Typography, Box, Alert, Container } from "@mui/material";
+import { Typography, Box, Alert, Container, IconButton, Collapse } from "@mui/material";
 import { BarChart as BarChartIcon } from "@mui/icons-material";
 
 /**
@@ -17,6 +17,8 @@ const Home = () => {
   const [error, setError] = useState(null);
   const [fileId, setFileId] = useState(null);
   const [filename, setFilename] = useState(null);
+
+  const [suggestionsOpen, setSuggestionsOpen] = useState(true);
 
   return (
     <Box 
@@ -103,25 +105,33 @@ const Home = () => {
               >
                 💡 Sugerencias de Visualización
               </Typography>
+              <IconButton
+                onClick={() => setSuggestionsOpen(!suggestionsOpen)}
+                sx={{ color: "primary.main" }}
+              >
+                {suggestionsOpen ? "🔼" : "🔽"}
+              </IconButton>
             </Box>
-            <Box 
-              sx={{ 
-                display: "flex",
-                flexWrap: "wrap",
-                justifyContent: "center",
-                gap: { xs: 2, md: 3 }
-              }}
-            >
-              {suggestions.map((sugg, idx) => (
-                <SuggestionCard
-                  key={idx}
-                  suggestion={sugg}
-                  fileId={fileId}
-                  filename={filename}
-                  onAdd={() => setDashboardCharts([...dashboardCharts, { ...sugg, fileId, filename }])}
-                />
-              ))}
-            </Box>
+            <Collapse in={suggestionsOpen}>
+              <Box 
+                sx={{ 
+                  display: "flex",
+                  flexWrap: "wrap",
+                  justifyContent: "center",
+                  gap: { xs: 2, md: 3 }
+                }}
+              >
+                {suggestions.map((sugg, idx) => (
+                  <SuggestionCard
+                    key={idx}
+                    suggestion={sugg}
+                    fileId={fileId}
+                    filename={filename}
+                    onAdd={() => setDashboardCharts([...dashboardCharts, { ...sugg, fileId, filename, description: sugg.insight }])}
+                  />
+                ))}
+              </Box>
+            </Collapse>
           </Box>
         )}
 

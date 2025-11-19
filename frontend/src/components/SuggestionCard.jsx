@@ -1,6 +1,14 @@
 import ChartPreview from "./ChartPreview";
 import { Paper, Typography, Button, Box, Chip } from "@mui/material";
-import { BarChart as BarChartIcon, ShowChart, PieChart, ScatterPlot } from "@mui/icons-material";
+import { 
+  BarChart as BarChartIcon, 
+  ShowChart, 
+  PieChart, 
+  ScatterPlot,
+  BubbleChart,
+  DonutLarge,
+  Radar as RadarIcon
+} from "@mui/icons-material";
 
 /**
  * Tarjeta con recomendación IA que muestra la gráfica renderizada.
@@ -23,10 +31,19 @@ const SuggestionCard = ({ suggestion, fileId, onAdd }) => {
       case "area":
         return <ShowChart fontSize="small" />;
       case "pie":
-      case "donut":
         return <PieChart fontSize="small" />;
+      case "donut":
+        return <DonutLarge fontSize="small" />;
       case "scatter":
         return <ScatterPlot fontSize="small" />;
+      case "radar":
+        return <RadarIcon fontSize="small" />;
+      case "radialbar":
+      case "radial":
+      case "composed":
+      case "combo":
+      case "mixed":
+        return <BubbleChart fontSize="small" />;
       default:
         return <BarChartIcon fontSize="small" />;
     }

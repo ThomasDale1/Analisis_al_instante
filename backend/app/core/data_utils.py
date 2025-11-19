@@ -46,16 +46,47 @@ def get_dataframe_summary(df: pd.DataFrame) -> Dict[str, Any]:
         "info": info_str
     }
 
+def _calculate_boxplot_stats(df: pd.DataFrame, x_axis: str, y_axis: str) -> Tuple[list, list]:
+    """
+    Calcula estadísticas de box plot (min, Q1, median, Q3, max) por categoría.
+    """
+    logger.info(f"Calculando estadísticas de box plot para {x_axis} vs {y_axis}")
+    
+    result = []
+    categories = df[x_axis].unique()
+    
+    for category in categories:
+        category_data = df[df[x_axis] == category][y_axis].dropna()
+        
+        if len(category_data) > 0:
+            stats = {
+                x_axis: category,
+                'min': float(category_data.min()),
+                'q1': float(category_data.quantile(0.25)),
+                'median': float(category_data.quantile(0.5)),
+                'q3': float(category_data.quantile(0.75)),
+                'max': float(category_data.max()),
+                'mean': float(category_data.mean()),
+                'count': int(len(category_data))
+            }
+            result.append(stats)
+    
+    columns = [x_axis, 'min', 'q1', 'median', 'q3', 'max', 'mean', 'count']
+    return result, columns
+
+
 def aggregate_for_chart(df: pd.DataFrame, params: Dict[str, Any]) -> Tuple[list, list]:
     """
     Devuelve datos agregados y columnas para el gráfico según los parámetros.
     Soporta agregaciones como sum, mean, count, etc.
+    Para box plots, calcula estadísticas de distribución.
     """
     # Manejo seguro de None values
     x_axis = params.get("x_axis") or ""
     y_axis = params.get("y_axis") or ""
     hue = params.get("hue")
     agg_func = params.get("agg_func") or "sum"
+    chart_type = params.get("chart_type", "").lower()
     
     # Strip solo si no es None
     x_axis = x_axis.strip() if x_axis else ""
@@ -63,7 +94,14 @@ def aggregate_for_chart(df: pd.DataFrame, params: Dict[str, Any]) -> Tuple[list,
     if hue:
         hue = hue.strip() if isinstance(hue, str) else hue
     
-    logger.info(f"Agregando datos: x={x_axis}, y={y_axis}, hue={hue}, agg={agg_func}")
+    logger.info(f"Agregando datos: x={x_axis}, y={y_axis}, hue={hue}, agg={agg_func}, chart_type={chart_type}")
+    
+    # CASO ESPECIAL: Box plots deshabilitados - convertir a bar con mean
+    if chart_type in ['box', 'boxplot']:
+        logger.warning(f"Box plot detectado, convirtiendo a bar chart con mean")
+        chart_type = 'bar'
+        if not agg_func or agg_func == 'sum':
+            agg_func = 'mean'
     
     # Parsear columnas virtuales como "average(Salario)" o "count"
     if y_axis and '(' in y_axis and ')' in y_axis:
@@ -99,6 +137,46 @@ def aggregate_for_chart(df: pd.DataFrame, params: Dict[str, Any]) -> Tuple[list,
     if hue and hue not in df.columns:
         raise ValueError(f"Columna '{hue}' no existe en el DataFrame")
     
+    # Detectar si x_axis es temporal y convertir si es necesario
+    is_temporal = False
+    temporal_aggregation = None
+    if x_axis and x_axis in df.columns:
+        # Verificar si es datetime o string que parece fecha
+        if pd.api.types.is_datetime64_any_dtype(df[x_axis]):
+            is_temporal = True
+            logger.info(f"Columna '{x_axis}' detectada como temporal (datetime)")
+        elif pd.api.types.is_object_dtype(df[x_axis]):
+            # Intentar convertir a datetime
+            try:
+                df[x_axis] = pd.to_datetime(df[x_axis])
+                is_temporal = True
+                logger.info(f"Columna '{x_axis}' convertida a temporal")
+            except:
+                logger.info(f"Columna '{x_axis}' no se pudo convertir a temporal")
+        
+        # Si es temporal, determinar el nivel de agregación apropiado
+        if is_temporal:
+            # Calcular el rango temporal
+            date_range = df[x_axis].max() - df[x_axis].min()
+            unique_dates = df[x_axis].nunique()
+            
+            # Decidir agregación según el rango
+            if date_range.days > 365 * 2:  # Más de 2 años → Agrupar por trimestre
+                temporal_aggregation = 'quarter'
+                # Crear columna temporal formateada (2018-Q1, 2018-Q2, etc.)
+                df[x_axis] = df[x_axis].dt.to_period('Q').astype(str)
+                logger.info(f"Agregación temporal: TRIMESTRE (rango: {date_range.days} días)")
+            elif date_range.days > 90 or unique_dates > 30:  # Más de 3 meses o >30 fechas → Agrupar por mes
+                temporal_aggregation = 'month'
+                # Crear columna temporal formateada (YYYY-MM)
+                df[x_axis] = df[x_axis].dt.to_period('M').astype(str)
+                logger.info(f"Agregación temporal: MES (rango: {date_range.days} días, {unique_dates} fechas únicas)")
+            else:  # Menos de 3 meses y pocas fechas → Mantener por día
+                temporal_aggregation = 'day'
+                # Formatear como YYYY-MM-DD para mejor legibilidad
+                df[x_axis] = df[x_axis].dt.strftime('%Y-%m-%d')
+                logger.info(f"Agregación temporal: DÍA (rango corto: {date_range.days} días)")
+    
     # Si no hay x_axis, retornar los primeros registros
     if not x_axis:
         result = df.head(10).to_dict('records')
@@ -124,6 +202,10 @@ def aggregate_for_chart(df: pd.DataFrame, params: Dict[str, Any]) -> Tuple[list,
                 else:
                     # Agrupar solo por x_axis
                     grouped = df.groupby(x_axis)[y_axis].agg(agg_func).reset_index()
+                    # Ordenar por x_axis si es temporal
+                    if is_temporal:
+                        grouped = grouped.sort_values(by=x_axis)
+                        logger.info(f"Datos ordenados cronológicamente por '{x_axis}'")
                     result = grouped.to_dict('records')
                     columns = [x_axis, y_axis]
             except Exception as e:
@@ -135,6 +217,9 @@ def aggregate_for_chart(df: pd.DataFrame, params: Dict[str, Any]) -> Tuple[list,
                     columns = [x_axis, hue, y_axis]
                 else:
                     grouped = df.groupby(x_axis)[y_axis].sum().reset_index()
+                    # Ordenar por x_axis si es temporal
+                    if is_temporal:
+                        grouped = grouped.sort_values(by=x_axis)
                     result = grouped.to_dict('records')
                     columns = [x_axis, y_axis]
     
@@ -150,6 +235,10 @@ def aggregate_for_chart(df: pd.DataFrame, params: Dict[str, Any]) -> Tuple[list,
                 # Contar valores únicos de x_axis
                 grouped = df[x_axis].value_counts().reset_index()
                 grouped.columns = [x_axis, 'count']
+                # Ordenar por x_axis si es temporal (en lugar de por frecuencia)
+                if is_temporal:
+                    grouped = grouped.sort_values(by=x_axis)
+                    logger.info(f"Conteo ordenado cronológicamente por '{x_axis}'")
                 result = grouped.to_dict('records')
                 columns = [x_axis, 'count']
         except Exception as e:

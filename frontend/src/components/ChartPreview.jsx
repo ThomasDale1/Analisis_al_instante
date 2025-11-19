@@ -12,6 +12,14 @@ import {
   Scatter,
   AreaChart,
   Area,
+  RadarChart,
+  Radar,
+  PolarGrid,
+  PolarAngleAxis,
+  PolarRadiusAxis,
+  RadialBarChart,
+  RadialBar,
+  ComposedChart,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -24,7 +32,7 @@ import { Box, CircularProgress, Typography, Alert } from "@mui/material";
 /**
  * Componente que renderiza una gráfica según el tipo usando Recharts.
  */
-const ChartPreview = ({ chartType, parameters, fileId }) => {
+const ChartPreview = ({ chartType, parameters, fileId, description }) => {
   const [chartData, setChartData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -34,7 +42,12 @@ const ChartPreview = ({ chartType, parameters, fileId }) => {
       try {
         setLoading(true);
         setError(null);
-        const data = await getChartData(fileId, parameters);
+        // Pasar el chart_type en los parámetros para casos especiales (box plots)
+        const paramsWithType = {
+          ...parameters,
+          chart_type: chartType
+        };
+        const data = await getChartData(fileId, paramsWithType);
         setChartData(data);
       } catch (err) {
         setError(err.message);
@@ -46,7 +59,7 @@ const ChartPreview = ({ chartType, parameters, fileId }) => {
     if (fileId && parameters) {
       fetchData();
     }
-  }, [fileId, parameters]);
+  }, [fileId, parameters, chartType]);
 
   if (loading) {
     return (
@@ -158,12 +171,28 @@ const ChartPreview = ({ chartType, parameters, fileId }) => {
   };
 
 
+  const renderDescription = () => (
+    description && (
+      <Typography
+        variant="body2"
+        sx={{
+          color: "#e0e0e0",
+          textAlign: "center",
+          marginBottom: 2,
+        }}
+      >
+        {description}
+      </Typography>
+    )
+  );
+
   // Renderizar según el tipo de gráfica
   switch (chartType.toLowerCase()) {
     case "bar":
     case "column":
       return (
         <Box sx={{ bgcolor: 'rgb(25, 24, 44)', borderRadius: 2, p: 1 }}>
+          {renderDescription()}
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.08)" />
@@ -191,6 +220,7 @@ const ChartPreview = ({ chartType, parameters, fileId }) => {
     case "line":
       return (
         <Box sx={{ bgcolor: 'rgb(25, 24, 44)', borderRadius: 2, p: 1 }}>
+          {renderDescription()}
           <ResponsiveContainer width="100%" height={280}>
             <LineChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.08)" />
@@ -232,11 +262,11 @@ const ChartPreview = ({ chartType, parameters, fileId }) => {
         const y = cy + radius * Math.sin(-midAngle * RADIAN);
 
         return (
-          <text 
-            x={x} 
-            y={y} 
+          <text
+            x={x}
+            y={y}
             fill="#ffffff"
-            textAnchor={x > cx ? 'start' : 'end'} 
+            textAnchor={x > cx ? 'start' : 'end'}
             dominantBaseline="central"
             style={{ 
               fontSize: '13px', 
@@ -249,8 +279,12 @@ const ChartPreview = ({ chartType, parameters, fileId }) => {
         );
       };
 
+      // Usar innerRadius solo si es tipo donut
+      const isDonut = chartType?.toLowerCase() === "donut";
+
       return (
-        <Box sx={{ bgcolor: 'rgb(25, 24, 44)', borderRadius: 2, p: 1 }}>
+        <Box sx={{ bgcolor: 'rgb(25, 24, 44)', borderRadius: 2, p: 1, position: 'relative' }}>
+          {renderDescription()}
           <ResponsiveContainer width="100%" height={280}>
             <PieChart>
               <Pie
@@ -259,6 +293,7 @@ const ChartPreview = ({ chartType, parameters, fileId }) => {
                 nameKey={xKey}
                 cx="50%"
                 cy="50%"
+                innerRadius={isDonut ? 60 : 0}
                 outerRadius={85}
                 label={renderCustomLabel}
                 labelLine={{ 
@@ -271,12 +306,47 @@ const ChartPreview = ({ chartType, parameters, fileId }) => {
                 ))}
               </Pie>
               <Tooltip contentStyle={{
-                backgroundColor: 'rgba(212, 216, 223, 0.95)',
+                backgroundColor: 'rgba(235, 239, 247, 0.95)',
                 border: '1px solid rgba(255, 255, 255, 0.2)',
                 borderRadius: '8px',
                 padding: '10px',
                 color: '#ffffff'
               }} />
+              
+              {/* Texto central para donut */}
+              {isDonut && (
+                <text 
+                  x="50%" 
+                  y="50%" 
+                  textAnchor="middle" 
+                  dominantBaseline="middle"
+                  style={{
+                    fontSize: '24px',
+                    fontWeight: '700',
+                    fill: '#ffffff',
+                    textShadow: '0 2px 4px rgba(0,0,0,0.3)'
+                  }}
+                >
+                  {displayData.length}
+                </text>
+              )}
+              {isDonut && (
+                <text 
+                  x="50%" 
+                  y="50%" 
+                  dy="20"
+                  textAnchor="middle" 
+                  dominantBaseline="middle"
+                  style={{
+                    fontSize: '12px',
+                    fontWeight: '500',
+                    fill: '#ffffff',
+                    opacity: 0.8
+                  }}
+                >
+                  categorías
+                </text>
+              )}
             </PieChart>
           </ResponsiveContainer>
         </Box>
@@ -284,10 +354,23 @@ const ChartPreview = ({ chartType, parameters, fileId }) => {
     }
 
     case "scatter": {
-      // Tooltip personalizado para scatter que muestra todos los datos del punto
+      // Tooltip personalizado para scatter que muestra solo los campos más relevantes
       const CustomScatterTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
           const data = payload[0].payload;
+          
+          // Filtrar solo los campos más importantes: X, Y y máximo 2 campos adicionales
+          const priorityFields = [xKey, yKey];
+          const otherFields = Object.keys(data).filter(key => 
+            !priorityFields.includes(key) && 
+            typeof data[key] !== 'object' &&
+            !key.toLowerCase().includes('id') &&
+            !key.toLowerCase().includes('timestamp') &&
+            !key.toLowerCase().includes('date')
+          ).slice(0, 2); // Máximo 2 campos adicionales
+          
+          const fieldsToShow = [...priorityFields, ...otherFields];
+          
           return (
             <div style={{
               backgroundColor: 'rgba(26, 35, 50, 0.95)',
@@ -297,12 +380,12 @@ const ChartPreview = ({ chartType, parameters, fileId }) => {
               fontSize: '12px',
               color: '#ffffff',
               backdropFilter: 'blur(10px)',
-              maxWidth: '250px'
+              maxWidth: '220px'
             }}>
-              {Object.entries(data).map(([key, value]) => (
+              {fieldsToShow.map((key) => (
                 <div key={key} style={{ marginBottom: '6px', display: 'flex', justifyContent: 'space-between', gap: '12px' }}>
                   <strong style={{ color: '#64b5f6' }}>{key}:</strong>
-                  <span>{formatValue(value, key)}</span>
+                  <span style={{ textAlign: 'right' }}>{formatValue(data[key], key)}</span>
                 </div>
               ))}
             </div>
@@ -313,6 +396,7 @@ const ChartPreview = ({ chartType, parameters, fileId }) => {
 
       return (
         <Box sx={{ bgcolor: 'rgb(25, 24, 44)', borderRadius: 2, p: 1 }}>
+          {renderDescription()}
           <ResponsiveContainer width="100%" height={280}>
             <ScatterChart margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.08)" />
@@ -346,6 +430,7 @@ const ChartPreview = ({ chartType, parameters, fileId }) => {
     case "area":
       return (
         <Box sx={{ bgcolor: 'rgb(25, 24, 44)', borderRadius: 2, p: 1 }}>
+          {renderDescription()}
           <ResponsiveContainer width="100%" height={280}>
             <AreaChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
               <defs>
@@ -385,6 +470,7 @@ const ChartPreview = ({ chartType, parameters, fileId }) => {
     case "histogram":
       return (
         <Box sx={{ bgcolor: 'rgb(25, 24, 44)', borderRadius: 2, p: 1 }}>
+          {renderDescription()}
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.08)" />
@@ -406,11 +492,162 @@ const ChartPreview = ({ chartType, parameters, fileId }) => {
         </Box>
       );
 
+    // Box plots deshabilitados - se procesan como bar charts en el backend
+
+    case "radar": {
+      return (
+        <Box sx={{ bgcolor: 'rgb(25, 24, 44)', borderRadius: 2, p: 1 }}>
+          {renderDescription()}
+          <ResponsiveContainer width="100%" height={280}>
+            <RadarChart data={displayData}>
+              <PolarGrid stroke="rgba(255, 255, 255, 0.2)" />
+              <PolarAngleAxis 
+                dataKey={xKey} 
+                tick={{ fontSize: 10, fill: '#e0e0e0' }}
+              />
+              <PolarRadiusAxis 
+                tick={{ fontSize: 10, fill: '#e0e0e0' }}
+              />
+              <Radar 
+                name={yKey} 
+                dataKey={yKey} 
+                stroke={colors[6]} 
+                fill={colors[6]} 
+                fillOpacity={0.6} 
+              />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: 'rgba(26, 35, 50, 0.95)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '8px',
+                  color: '#ffffff'
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: '12px' }} />
+            </RadarChart>
+          </ResponsiveContainer>
+        </Box>
+      );
+    }
+
+    case "radialbar":
+    case "radial": {
+      return (
+        <Box sx={{ bgcolor: 'rgb(25, 24, 44)', borderRadius: 2, p: 1 }}>
+          {renderDescription()}
+          <ResponsiveContainer width="100%" height={280}>
+            <RadialBarChart 
+              innerRadius="10%" 
+              outerRadius="90%" 
+              data={displayData} 
+              startAngle={180} 
+              endAngle={0}
+            >
+              <RadialBar 
+                minAngle={15} 
+                background 
+                clockWise={true} 
+                dataKey={yKey}
+                label={{ fill: '#ffffff', position: 'insideStart' }}
+              />
+              <Legend 
+                iconSize={10} 
+                wrapperStyle={{ fontSize: '12px' }}
+                layout="vertical" 
+                verticalAlign="middle" 
+                align="right"
+              />
+              <Tooltip 
+                contentStyle={{
+                  backgroundColor: 'rgba(26, 35, 50, 0.95)',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  borderRadius: '8px',
+                  color: '#ffffff'
+                }}
+              />
+            </RadialBarChart>
+          </ResponsiveContainer>
+        </Box>
+      );
+    }
+
+    case "composed":
+    case "combo":
+    case "mixed": {
+      // Gráfico combinado con barras y línea
+      return (
+        <Box sx={{ bgcolor: 'rgb(25, 24, 44)', borderRadius: 2, p: 1 }}>
+          {renderDescription()}
+          <ResponsiveContainer width="100%" height={280}>
+            <ComposedChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.08)" />
+              <XAxis 
+                dataKey={xKey}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+                tick={{ fontSize: 11, fill: '#e0e0e0' }}
+                stroke="rgba(255, 255, 255, 0.3)"
+              />
+              <YAxis 
+                tick={{ fontSize: 11, fill: '#e0e0e0' }}
+                tickFormatter={(value) => isCurrencyColumn(yKey) ? `$${value.toLocaleString()}` : value}
+                stroke="rgba(255, 255, 255, 0.3)"
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ fontSize: '12px' }} />
+              <Bar dataKey={yKey} fill={colors[7]} radius={[4, 4, 0, 0]} />
+              <Line 
+                type="monotone" 
+                dataKey={yKey} 
+                stroke={colors[8]} 
+                strokeWidth={2}
+                dot={{ fill: colors[8], r: 4 }}
+              />
+            </ComposedChart>
+          </ResponsiveContainer>
+        </Box>
+      );
+    }
+
     default:
       return (
-        <Alert severity="warning" sx={{ fontSize: "0.75rem" }}>
-          Tipo de gráfica no soportado: {chartType}
-        </Alert>
+        <Box sx={{ bgcolor: 'rgb(25, 24, 44)', borderRadius: 2, p: 1 }}>
+          {renderDescription()}
+          <ResponsiveContainer width="100%" height={280}>
+            <BarChart data={displayData} margin={{ top: 10, right: 10, left: 0, bottom: 20 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255, 255, 255, 0.08)" />
+              <XAxis 
+                dataKey={xKey}
+                angle={-45}
+                textAnchor="end"
+                height={80}
+                tick={{ fontSize: 11, fill: '#e0e0e0' }}
+                stroke="rgba(255, 255, 255, 0.3)"
+              />
+              <YAxis 
+                tick={{ fontSize: 11, fill: '#e0e0e0' }}
+                tickFormatter={(value) => isCurrencyColumn(yKey) ? `$${value.toLocaleString()}` : value}
+                stroke="rgba(255, 255, 255, 0.3)"
+              />
+              <Tooltip content={<CustomTooltip />} />
+              <Legend wrapperStyle={{ fontSize: '12px' }} />
+              <Bar dataKey={yKey} fill={colors[9]} radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+          <Typography 
+            variant="caption" 
+            sx={{ 
+              display: 'block', 
+              textAlign: 'center', 
+              color: 'warning.main',
+              mt: 1,
+              fontSize: '0.7rem'
+            }}
+          >
+            ⚠️ Tipo "{chartType}" no reconocido, mostrando como gráfico de barras
+          </Typography>
+        </Box>
       );
   }
 };
