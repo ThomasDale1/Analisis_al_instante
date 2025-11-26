@@ -1,13 +1,15 @@
 import ChartPreview from "./ChartPreview";
-import { Paper, Typography, Box } from "@mui/material";
+import { Paper, Typography, Box, IconButton, Tooltip } from "@mui/material";
+import { Delete as DeleteIcon } from "@mui/icons-material";
 
 /**
  * Renderiza una gráfica individual dentro del dashboard.
  */
-const ChartRenderer = ({ chart }) => {
+const ChartRenderer = ({ chart, onDelete, chartIndex }) => {
   const { title, chart_type, parameters, fileId, insight, description } = chart;
 
   const displayDescription = description || insight;
+  
   return (
     <Paper
       elevation={0}
@@ -22,18 +24,48 @@ const ChartRenderer = ({ chart }) => {
         border: "1px solid rgba(255, 255, 255, 0.1)",
         borderRadius: 3,
         transition: "all 0.3s ease",
+        position: "relative",
         "&:hover": {
           boxShadow: "0 8px 24px rgba(33, 150, 243, 0.15)",
-          border: "1px solid rgba(33, 150, 243, 0.2)"
+          border: "1px solid rgba(33, 150, 243, 0.2)",
+          "& .delete-button": {
+            opacity: 1
+          }
         }
       }}
     >
+      {/* Botón de eliminar (aparece al hacer hover) */}
+      <Tooltip title="Eliminar del dashboard" arrow>
+        <IconButton
+          className="delete-button"
+          onClick={() => onDelete(chartIndex)}
+          sx={{
+            position: "absolute",
+            top: 12,
+            right: 12,
+            opacity: 0,
+            transition: "all 0.2s ease",
+            backgroundColor: "rgba(244, 67, 54, 0.1)",
+            color: "error.main",
+            "&:hover": {
+              backgroundColor: "error.main",
+              color: "white",
+              transform: "scale(1.1)"
+            }
+          }}
+          size="small"
+        >
+          <DeleteIcon fontSize="small" />
+        </IconButton>
+      </Tooltip>
+
       <Typography 
         variant="h6" 
         fontWeight="bold" 
         sx={{ 
           mb: 2,
-          color: "text.primary"
+          color: "text.primary",
+          pr: 5 // Espacio para el botón de eliminar
         }}
       >
         {title}
