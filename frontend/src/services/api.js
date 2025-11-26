@@ -11,11 +11,9 @@ export async function uploadFileAndGetSuggestions(file) {
     // 1. Sube el archivo y obtiene el resumen con file_id
     const formData = new FormData();
     formData.append('file', file);
-    console.log('🔧 Haciendo POST a:', `${API_BASE}/upload`);
     const uploadResp = await axios.post(`${API_BASE}/upload`, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    console.log('✅ Upload exitoso:', uploadResp.data);
     // 2. Envía el resumen a /suggest (sin file_id ni filename)
     const { file_id, filename, ...summary } = uploadResp.data;
     const suggestResp = await axios.post(`${API_BASE}/suggest`, summary);
