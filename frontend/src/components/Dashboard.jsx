@@ -4,17 +4,10 @@ import { Box, Typography } from "@mui/material";
 /**
  * Dashboard donde se renderizan las gráficas seleccionadas.
  */
-const Dashboard = ({ charts, onDeleteChart }) => {
+const Dashboard = ({ charts }) => {
   if (!charts || charts.length === 0) {
     return null;
   }
-
-  const handleDelete = (indexToDelete) => {
-    // Llamar a la función proporcionada por el componente padre
-    if (onDeleteChart) {
-      onDeleteChart(indexToDelete);
-    }
-  };
 
   return (
     <Box sx={{ mt: { xs: 5, md: 7 } }}>
@@ -36,15 +29,6 @@ const Dashboard = ({ charts, onDeleteChart }) => {
         >
           📊 Mi Dashboard
         </Typography>
-        <Typography 
-          variant="body2" 
-          sx={{ 
-            color: "text.secondary",
-            ml: 1
-          }}
-        >
-          ({charts.length} {charts.length === 1 ? "gráfica" : "gráficas"})
-        </Typography>
       </Box>
       <Box
         sx={{
@@ -63,11 +47,7 @@ const Dashboard = ({ charts, onDeleteChart }) => {
               maxWidth: "600px"
             }}
           >
-            <ChartRenderer 
-              chart={chart} 
-              chartIndex={idx}
-              onDelete={handleDelete}
-            />
+            <ChartRenderer chart={chart} />
           </Box>
         ))}
       </Box>

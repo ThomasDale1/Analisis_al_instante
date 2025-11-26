@@ -20,13 +20,6 @@ const Home = () => {
 
   const [suggestionsOpen, setSuggestionsOpen] = useState(true);
 
-  // Función para eliminar una gráfica del dashboard
-  const handleDeleteChart = (indexToDelete) => {
-    setDashboardCharts((prevCharts) => 
-      prevCharts.filter((_, index) => index !== indexToDelete)
-    );
-  };
-
   return (
     <Box 
       sx={{ 
@@ -142,11 +135,8 @@ const Home = () => {
           </Box>
         )}
 
-        {/* Dashboard - Ahora con la función onDeleteChart */}
-        <Dashboard 
-          charts={dashboardCharts} 
-          onDeleteChart={handleDeleteChart}
-        />
+        {/* Dashboard */}
+        <Dashboard charts={dashboardCharts} />
       </Container>
     </Box>
   );
