@@ -9,9 +9,9 @@ app = FastAPI(title="Análisis al Instante", description="API para análisis y d
 # Configuración de CORS (ajusta origins para producción)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["https://analisis-al-instante-i4a2.vercel.app/"],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["POST", "GET", "OPTIONS"],
     allow_headers=["*"],
 )
 
